@@ -1,0 +1,166 @@
+<canvas id="myCanvas" width="600" height="600" style="background:url(background.jpg);background-size: cover;border-style: solid; border-width: medium;margin: auto;display: block;"></canvas>
+<script>
+    /****Config*****/
+    var c = document.getElementById("myCanvas"); //Canvas element to create game
+    var deltaTime = 60; //Time between game loop execution in milliseconds
+    var gridSize = 30; //Number of grid spaces in each direction
+    var numberOfFoodPictures = 2; //Number of images in directory food/ with naming convention 1.png,2.png,3.png,... one will be randomly chosen and displayed as food
+    /***************/
+    var pixelSize = c.width; // Does not support non square canvases
+    var scaleFacotor = pixelSize / gridSize; //Number of pixels per grid panel
+    var snake = []; //This is the array of objects that are displayed as part of the snake
+    var placeFoodNext = false; //Used to offset the placing of food one frame
+    var direction = 1; //The direction of the snake 0-Up 1-Right 2-Down 3-Left
+    var directionLastFrame = 1; //This prevents the direction from being changed twice in one frame
+    var ctx = c.getContext("2d");
+    var head = { //Create the head object
+        x: -1,
+        y: Math.floor(gridSize / 2),
+        type: "head"
+    };
+    snake.push(head);
+    var food = { //Create the food object
+        x: 0,
+        y: 0,
+        type: "food",
+        url: ""
+    };
+    placeFood();
+    setInterval("gameLoop()", deltaTime); //Set game loop
+    function gameLoop() {
+        var upcomingX = snake[0].x; //The x coordinate the snake is about to be on
+        var upcomingY = snake[0].y; //The y coordinate the snake is about to be on
+        if (direction == 0) upcomingY = -1 + snake[0].y; //Update upcoming based on direction
+        if (direction == 1) upcomingX = 1 + snake[0].x;
+        if (direction == 2) upcomingY = snake[0].y + 1;
+        if (direction == 3) upcomingX = snake[0].x - 1;
+        for (var i = 0; i < snake.length; i++) { //Loop through every segment of the snake and see if it is touching the head.
+            if (snake[i].x == upcomingX && snake[i].y == upcomingY) {
+                gameLost();
+            }
+        }
+        if (upcomingX == food.x && upcomingY == food.y) { //If the food is eaten
+            var addition = JSON.parse(JSON.stringify(food)); //Copy to food object
+            addition.type = "body"; //Switch the type to body
+            snake.push(addition); //Add addition to snake
+            placeFoodNext = true;
+            moveSnake();
+        }
+        if (upcomingX == -1 || upcomingX == gridSize || upcomingY == -1 || upcomingY == gridSize) { //If the wall is touched
+            gameLost();
+        }
+        moveSnake();
+        if (placeFoodNext) { //If food needs to be placed
+            placeFoodNext = false;
+            placeFood();
+        }
+        clear();
+        for (var i = 0; i < snake.length; i++) { //Display the snake
+            displaySegment(snake[i]);
+        }
+        displaySegment(food);
+        directionLastFrame = direction;
+
+
+    }
+
+    document.addEventListener('keydown', function (event) { //Get key events
+        if (event.keyCode == 38) { //Up
+            if (directionLastFrame != 2)
+                direction = 0;
+        } else if (event.keyCode == 39) { //Right
+            if (directionLastFrame != 3)
+                direction = 1;
+        } else if (event.keyCode == 40) { //Down
+            if (directionLastFrame != 0)
+                direction = 2;
+        } else if (event.keyCode == 37) { //Left
+            if (directionLastFrame != 1)
+                direction = 3;
+        } else if (event.keyCode == 80) { //P
+            alert("Game Paused");
+        }
+    });
+
+    function displaySegment(segmentObject) { //Displays a segment object based on position
+        if (segmentObject.type.includes("head")) { //If segment is a head
+            var img = new Image();
+            img.src = "head.png";
+            var rotation = 0; //Find the rotation for the head
+            if (direction == 1) rotation = 90;
+            if (direction == 2) rotation = 180;
+            if (direction == 3) rotation = 270;
+            drawImageRot(img, toPixel(segmentObject.x) - scaleFacotor / 2, toPixel(segmentObject.y) - scaleFacotor / 2, scaleFacotor, scaleFacotor, rotation);
+        } else if (segmentObject.type.includes("body")) { //If segment is a body
+            var img = new Image();
+            img.src = "body.png";
+            ctx.drawImage(img, toPixel(segmentObject.x) - scaleFacotor / 2, toPixel(segmentObject.y) - scaleFacotor / 2, scaleFacotor, scaleFacotor);
+        } else if (segmentObject.type.includes("food")) { //If segment is food
+            var img = new Image();
+            img.src = segmentObject.url;
+            ctx.drawImage(img, toPixel(segmentObject.x) - scaleFacotor / 2, toPixel(segmentObject.y) - scaleFacotor / 2, scaleFacotor, scaleFacotor);
+        }
+    }
+
+    function toPixel(grid) { //Takes a position in grid units and returns it in pixel units
+        return (grid * scaleFacotor) + (scaleFacotor / 2);
+    }
+
+    function moveSnake() { //Move the snake object variables based on the direction
+        var xChange = 0;
+        var yChange = 0;
+        if (direction == 0) yChange = -1;
+        if (direction == 1) xChange = 1;
+        if (direction == 2) yChange = 1;
+        if (direction == 3) xChange = -1;
+
+        for (var i = 0; i < snake.length; i++) { //Move every segment object in the snake
+            var nextXChange = 0;
+            var nextYChange = 0;
+            if (i != snake.length - 1) {
+                nextXChange = snake[i].x - snake[i + 1].x;
+                nextYChange = snake[i].y - snake[i + 1].y;
+            }
+            snake[i].x += xChange;
+            snake[i].y += yChange;
+            xChange = nextXChange;
+            yChange = nextYChange;
+        }
+    }
+
+    function clear() { //Clears the canvas so a new frame can be rendered
+        var context = c.getContext("2d");
+        context.clearRect(0, 0, c.width, c.height);
+    }
+
+    function placeFood() { //Places the food object on the grid
+        food.x = Math.floor(Math.random() * gridSize);
+        food.y = Math.floor(Math.random() * gridSize);
+        food.url = getFoodURL();
+        for (var i = 0; i < snake.length; i++) { //Check to make sure the snake is not already on food
+            if (snake[i].x == food.x && snake[i].y == food.y) {
+                placeFood(); //Try again
+            }
+        }
+    }
+
+    function gameLost() { //This function is called when the player loses
+        alert("You Lose");
+        location.reload();
+    }
+
+    function drawImageRot(image, x, y, width, height, degrees) { //Display a rotated image on the canvas
+        var radians = degrees * Math.PI / 180; //Convert to radians
+        ctx.translate(x + width / 2, y + height / 2); //Make the origin the center of the image
+        ctx.rotate(radians); //Rotate the canvas
+        ctx.drawImage(image, width / 2 * (-1), height / 2 * (-1), width, height);
+        ctx.rotate(radians * (-1)); //De-rotate the canvas
+        ctx.translate((x + width / 2) * (-1), (y + height / 2) * (-1)); //De-translate the canvas
+    }
+
+    function getFoodURL() { //Randomly selects an image from directory food/ with naming convention 1.png,2.png,... and returns the url
+        var choice = Math.ceil(numberOfFoodPictures * Math.random());
+        var url = "food/" + choice.toString() + ".png";
+        return url;
+    }
+</script>
