@@ -134,8 +134,8 @@
     }
 
     function placeFood() { //Places the food object on the grid
-        food.x = Math.floor(Math.random() * gridSize);
-        food.y = Math.floor(Math.random() * gridSize);
+        food.x = Math.floor(Math.random() * (gridSize-2) + 1;
+        food.y = Math.floor(Math.random() * (gridSize-2) + 1;
         food.url = getFoodURL();
         for (var i = 0; i < snake.length; i++) { //Check to make sure the snake is not already on food
             if (snake[i].x == food.x && snake[i].y == food.y) {
